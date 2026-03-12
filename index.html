@@ -121,8 +121,17 @@ canvas {
 
   <div class="overlay" id="clearOverlay">
     <h1 style="color: var(--neon-green);">CLEAR!</h1>
-    <p id="clearMsg">Level 1 Complete</p>
-    <button class="btn" id="nextBtn">NEXT LEVEL</button>
+    <p id="clearMsg">Stage 1 Complete</p>
+    <p id="clearBonus" style="color: var(--neon-pink); font-family: 'Orbitron', monospace; font-size: 13px; margin-bottom: 20px; display: none;"></p>
+    <button class="btn" id="nextBtn">NEXT STAGE</button>
+  </div>
+
+  <div class="overlay" id="allClearOverlay">
+    <h1 style="color: var(--neon-yellow);">ALL CLEAR!</h1>
+    <p style="color: var(--text-primary); font-size: 15px; margin-bottom: 8px;">10 Stages Complete</p>
+    <div class="gameover-score" id="allClearScore">0</div>
+    <div class="best-score" id="allClearBest"></div>
+    <button class="btn" id="allClearBtn">PLAY AGAIN</button>
   </div>
 </div>
 
@@ -190,10 +199,13 @@ canvas {
 
   function createBricks() {
     bricks = [];
-    const rows = BRICK_ROWS + Math.min(Math.floor((level - 1) / 2), 3);
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < BRICK_COLS; c++) {
-        const hp = level >= 3 && r < 2 ? 2 : 1;
+    // 레벨이 올라갈수록 최소/최대 행 수 증가 → 전체 벽돌 수 증가
+    const minRows = Math.min(2 + Math.floor((level - 1) / 2), 7);  // 2,2,3,3,4,4,5,5,6,6
+    const maxRows = Math.min(4 + Math.floor((level - 1) * 0.7), 9); // 4,4,5,6,6,7,8,8,9,9
+    for (let c = 0; c < BRICK_COLS; c++) {
+      const colRows = Math.floor(Math.random() * (maxRows - minRows + 1)) + minRows;
+      for (let r = 0; r < colRows; r++) {
+        const hp = level >= 3 && r < 2 ? 2 : (level >= 7 && r < 1 ? 3 : 1);
         bricks.push({
           x: BRICK_PAD + c * (BRICK_W + BRICK_PAD),
           y: BRICK_TOP + r * (BRICK_H + BRICK_PAD),
@@ -225,7 +237,7 @@ canvas {
   }
 
   function initGame() {
-    score = 0; lives = 3; level = 1; combo = 0;
+    score = 0; lives = 5; level = 1; combo = 0;
     paddle.x = CANVAS_W / 2 - paddle.w / 2;
     paddle.wide = false; paddle.w = 90 * SCALE;
     balls = [createBall()]; balls[0].stuck = true;
@@ -235,6 +247,10 @@ canvas {
 
   function nextLevel() {
     level++;
+    // 4, 7, 10 스테이지 진입 시 목숨 +1
+    if (level === 4 || level === 7 || level === 10) {
+      lives++;
+    }
     paddle.wide = false; paddle.w = 90 * SCALE;
     balls = [createBall()]; balls[0].stuck = true;
     powerups = []; particles = []; combo = 0;
@@ -366,9 +382,27 @@ canvas {
     }
 
     if (bricks.every(b => !b.alive)) {
-      state = 'clear';
-      document.getElementById('clearMsg').textContent = 'Level ' + level + ' Complete';
-      document.getElementById('clearOverlay').classList.add('active');
+      if (level >= 10) {
+        // 전체 클리어!
+        state = 'allclear';
+        if (score > bestScore) { bestScore = score; localStorage.setItem('bb_best', bestScore); }
+        document.getElementById('allClearScore').textContent = score;
+        document.getElementById('allClearBest').textContent = 'BEST: ' + bestScore;
+        document.getElementById('allClearOverlay').classList.add('active');
+      } else {
+        state = 'clear';
+        document.getElementById('clearMsg').textContent = 'Stage ' + level + ' Complete';
+        // 다음 스테이지가 4,7,10이면 보너스 라이프 안내
+        const next = level + 1;
+        const bonusMsg = document.getElementById('clearBonus');
+        if (next === 4 || next === 7 || next === 10) {
+          bonusMsg.textContent = 'Stage ' + next + ' 진입 보너스: LIFE +1';
+          bonusMsg.style.display = 'block';
+        } else {
+          bonusMsg.style.display = 'none';
+        }
+        document.getElementById('clearOverlay').classList.add('active');
+      }
     }
   }
 
@@ -492,9 +526,9 @@ canvas {
     }
 
     // ===== HUD BAR (drawn on top of everything) =====
-    ctx.fillStyle = 'rgba(10,10,26,0.88)';
+    ctx.fillStyle = 'rgba(220,220,230,0.95)';
     ctx.fillRect(0, 0, CANVAS_W, HUD_H);
-    ctx.strokeStyle = 'rgba(0,240,255,0.2)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, HUD_H); ctx.lineTo(CANVAS_W, HUD_H); ctx.stroke();
 
     const labelY = HUD_H * 0.28;
@@ -502,30 +536,27 @@ canvas {
 
     // SCORE — left
     ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#6a6a8a';
+    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#444444';
     ctx.fillText('SCORE', 12 * SCALE, labelY);
-    ctx.font = 'bold ' + (20 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#00f0ff';
-    ctx.shadowColor = 'rgba(0,240,255,0.5)'; ctx.shadowBlur = 8;
+    ctx.font = 'bold ' + (20 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#000000';
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
     ctx.fillText(String(score), 12 * SCALE, valueY);
-    ctx.shadowBlur = 0;
 
     // STAGE — center
     ctx.textAlign = 'center';
-    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#6a6a8a';
+    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#444444';
     ctx.fillText('STAGE', CANVAS_W / 2, labelY);
-    ctx.font = 'bold ' + (22 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#ffe42d';
-    ctx.shadowColor = 'rgba(255,228,45,0.5)'; ctx.shadowBlur = 8;
+    ctx.font = 'bold ' + (22 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#000000';
     ctx.fillText(String(level), CANVAS_W / 2, valueY);
-    ctx.shadowBlur = 0;
 
     // LIVES — right (hearts)
     ctx.textAlign = 'right';
-    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#6a6a8a';
+    ctx.font = (9 * SCALE) + "px 'Orbitron'"; ctx.fillStyle = '#444444';
     ctx.fillText('LIVES', CANVAS_W - 12 * SCALE, labelY);
 
     const heartSize = 11 * SCALE;
     const heartGap = 5 * SCALE;
-    const maxL = Math.max(3, lives);
+    const maxL = Math.max(5, lives);
     const totalW = maxL * heartSize + (maxL - 1) * heartGap;
     const startX = CANVAS_W - 12 * SCALE - totalW;
     for (let i = 0; i < maxL; i++) {
@@ -549,6 +580,10 @@ canvas {
   document.getElementById('nextBtn').addEventListener('click', () => {
     document.getElementById('clearOverlay').classList.remove('active');
     state = 'playing'; nextLevel();
+  });
+  document.getElementById('allClearBtn').addEventListener('click', () => {
+    document.getElementById('allClearOverlay').classList.remove('active');
+    state = 'playing'; initGame();
   });
 
   initGame();
