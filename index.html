@@ -113,7 +113,8 @@ canvas {
   </div>
 
   <div class="overlay" id="gameOverOverlay">
-    <h1 style="color: var(--neon-pink);">GAME OVER</h1>
+    <h1 style="color: var(--neon-pink); font-size: 52px; letter-spacing: 8px; margin-bottom: 16px;">FAIL</h1>
+    <p style="color: var(--text-muted); font-family: 'Orbitron', monospace; font-size: 12px; letter-spacing: 2px; margin-bottom: 4px;">YOUR SCORE</p>
     <div class="gameover-score" id="finalScore">0</div>
     <div class="best-score" id="bestScoreDisplay"></div>
     <button class="btn restart" id="restartBtn">RETRY</button>
@@ -569,19 +570,28 @@ canvas {
   // === LOOP ===
   function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 
-  document.getElementById('startBtn').addEventListener('click', () => {
+  // 모든 버튼에서 키보드(스페이스/엔터)로 눌리는 것 방지
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('keydown', (e) => { e.preventDefault(); });
+  });
+
+  document.getElementById('startBtn').addEventListener('click', function() {
+    this.blur();
     document.getElementById('startOverlay').classList.remove('active');
     state = 'playing'; initGame();
   });
-  document.getElementById('restartBtn').addEventListener('click', () => {
+  document.getElementById('restartBtn').addEventListener('click', function() {
+    this.blur();
     document.getElementById('gameOverOverlay').classList.remove('active');
     state = 'playing'; initGame();
   });
-  document.getElementById('nextBtn').addEventListener('click', () => {
+  document.getElementById('nextBtn').addEventListener('click', function() {
+    this.blur();
     document.getElementById('clearOverlay').classList.remove('active');
     state = 'playing'; nextLevel();
   });
-  document.getElementById('allClearBtn').addEventListener('click', () => {
+  document.getElementById('allClearBtn').addEventListener('click', function() {
+    this.blur();
     document.getElementById('allClearOverlay').classList.remove('active');
     state = 'playing'; initGame();
   });
